@@ -1,0 +1,181 @@
+1. What restaurants are located in this zip code 10009?
+
+db.restaurant.find({'address.zipcode': '10009', 'name': {'$ne': ''}}, {'name': 1, '_id': 0}).sort({'name': 1}).limit(10)
+
+[
+  { name: '14Th Street Pizza Bagel Cafe' },
+  { name: '26 Seats' },
+  { name: '2A' },
+  { name: '510 11St Bar' },
+  { name: '7B Bar' },
+  { name: '99¢ Famous Pizza' },
+  { name: 'A & C Kitchen' },
+  { name: 'Abc Beer Co.' },
+  { name: 'Ace Bar' },
+  { name: 'Against The Grain' }
+]
+
+2. What restaurants have a A grade?
+
+db.restaurant.aggregate([
+... {$unwind: "$grades"},
+... {$match: {"grades.score": {$lt: 5}, "grades.grade": "A"}},
+... {$sort: {"grades.score": 1}},
+... {$group: {_id: "$name",lowest_score: {$min: "$grades.score"}}},
+... {$sort: {"lowest_score": 1}},
+... {$limit: 10}
+... 
+... ])
+
+[
+  { _id: "Pizzeria Dell' Orto", lowest_score: 0 },
+  { _id: 'Healthy Living 106', lowest_score: 0 },
+  { _id: 'K & Q Restaruant', lowest_score: 0 },
+  { _id: 'Club Bar #2 Horseshoe Bar (1St Base)', lowest_score: 0 },
+  { _id: '59E59 Bar', lowest_score: 0 },
+  { _id: 'Away Cafe', lowest_score: 0 },
+  { _id: 'Alta', lowest_score: 0 },
+  { _id: 'Cibo Express/Vagabond', lowest_score: 0 },
+  { _id: 'Stand 417', lowest_score: 0 },
+  { _id: 'Rockaway Beach Inn', lowest_score: 0 }
+]
+
+3. What is the most popular cuisine in Queens?
+
+db.restaurant.aggregate([
+... {$match: {"borough": "Queens"}},
+... {$group: {_id: "$cuisine", count: {$sum: 1}}},
+... {$sort: {count: -1}},
+... {$limit: 1}
+... 
+... ])
+
+[ { _id: 'American', count: 1040 } ]
+
+
+4. What is the average food inspection score in Manhattan by year?
+
+db.restaurant.aggregate([
+... {$match: {"borough": "Manhattan"}},
+... {$unwind: "$grades"},
+... {$addFields: {"inspection_year": {$year: "$grades.date"}}},
+... {$group: {_id: "$inspection_year", avg_score: {$avg: "$grades.score"}}}, 
+... {$sort: {"_id": 1}}
+... 
+... ])
+
+[
+  { _id: 2010, avg_score: 11.5 },
+  { _id: 2011, avg_score: 11.521401819154628 },
+  { _id: 2012, avg_score: 11.464278209707922 },
+  { _id: 2013, avg_score: 11.459175567128607 },
+  { _id: 2014, avg_score: 11.186489345624906 },
+  { _id: 2015, avg_score: 13.646173149309913 }
+]
+
+5. What is the average food inspection score at delicatessen cuisine by year?
+
+db.restaurant.aggregate([
+... {$match: {cuisine: "Delicatessen"}},
+... {$unwind: "$grades"},
+... {$group: {_id: {$year: "$grades.date"},avg_score: {$avg: "$grades.score"}}},
+... {$sort: {"_id": 1}}
+... 
+... ])
+
+[
+  { _id: 2011, avg_score: 13.773722627737227 },
+  { _id: 2012, avg_score: 13.235148514851485 },
+  { _id: 2013, avg_score: 12.961945031712473 },
+  { _id: 2014, avg_score: 12.281512605042018 },
+  { _id: 2015, avg_score: 13.40625 }
+]
+
+6. What ice cream shops are in the zip code 11218?
+
+db.restaurant.find(
+... {"address.zipcode": "11218","cuisine": "Ice Cream, Gelato, Yogurt, Ices"},
+... {"name": 1, "address.building": 1, "address.street": 1, "_id": 0}
+... 
+... )
+
+[
+  {
+    address: { building: '203', street: 'Church Avenue' },
+    name: 'Carvel Ice Cream'
+  },
+  {
+    address: { building: '422', street: 'Greenwood Avenue' },
+    name: "Kathy'S Gourmet Italian Ices & Ice Cream"
+  }
+]
+
+7. Which borough has the most Chinese food?
+
+db.restaurant.aggregate([
+... {$match: {cuisine: "Chinese"}},
+... {$group: {_id: "$borough", count: {$sum: 1}}},
+... {$sort: {count: -1}},
+... {$limit: 1}
+... 
+... ])
+
+[ { _id: 'Brooklyn', count: 763 } ]
+
+8. Which zip code has the most number of restaurants?
+
+db.restaurant.aggregate([
+... {$group: {_id: "$address.zipcode", count: {$sum: 1}}},
+... {$sort: {count: -1}},
+... {$limit: 10}
+... 
+... ])
+
+[
+  { _id: '10003', count: 686 },
+  { _id: '10019', count: 675 },
+  { _id: '10036', count: 611 },
+  { _id: '10001', count: 520 },
+  { _id: '10022', count: 485 },
+  { _id: '10013', count: 480 },
+  { _id: '10002', count: 471 },
+  { _id: '10011', count: 467 },
+  { _id: '10016', count: 433 },
+  { _id: '10014', count: 428 }
+]
+
+9. Which borough has the least amount of bakeries? 
+
+db.restaurant.aggregate([
+... {$match: {cuisine: "Bakery", borough: {$ne: "Missing"}}},
+... {$group: {_id: "$borough", count: {$sum: 1}}},
+... {$sort: {count: 1}},
+... {$limit: 1}
+... 
+... ])
+
+[ { _id: 'Staten Island', count: 20 } ]
+
+10. What cuisines are in Brooklyn?
+
+db.restaurant.aggregate([
+... {$match: {borough: "Brooklyn"}},
+... {$group: {_id: "$cuisine"}},
+... {$sort: {_id: 1}},
+... {$limit: 10 }
+... 
+... ])
+
+[
+  { _id: 'Afghan' },
+  { _id: 'African' },
+  { _id: 'American' },
+  { _id: 'Armenian' },
+  { _id: 'Asian' },
+  { _id: 'Australian' },
+  { _id: 'Bagels/Pretzels' },
+  { _id: 'Bakery' },
+  { _id: 'Bangladeshi' },
+  { _id: 'Barbecue' }
+]
+
